@@ -13,13 +13,13 @@ const cols = 10;    // 列数
 const squareSize = 37; // 每个方块大小
 
 
-let    ffg=0
-let   vvmm=''
+
+
 
 let colorMatrix = [
-  ["#fefefe", "#bc59d3", "#ff8200", "#ea4846", "#7f58bd", "#ffe9f4", "#c1e153", "#ffd864", "#b35b3d", "#eb5299"],
+  ["#00baeb", "#bc59d3", "#ff8200", "#ea4846", "#7f58bd", "#ffe9f4", "#c1e153", "#ffd864", "#b35b3d", "#eb5299"],
   ["#846adc", "#f94151", "#d63665", "#8e7de4", "#4dc7f6", "#00b26e", "#fffbbd", "#ff9f36", "#e45c26", "#fff435"],
-  ["#00baeb", "#f24284", "#c73f69", "#6c79e0", "#45d8f9", "#eab6a9", "#c3d2f5", "#e98b38", "#ff5e3d", "#cdada4"],
+  ["#fefefe", "#f24284", "#c73f69", "#6c79e0", "#45d8f9", "#eab6a9", "#c3d2f5", "#e98b38", "#ff5e3d", "#cdada4"],
   ["#2b6ed4", "#fe3e64", "#df3e9c", "#ffd9d3", "#00c2d1", "#56b746", "#bae7a3", "#865445", "#ff8d4f", "#ff4b59"],
   ["#00ac5f", "#f64776", "#dc9ff5", "#2389af", "#26c9cb", "#82d060", "#f9c956", "#955442", "#ff9484", "#d7f3fd"]
 ];
@@ -29,8 +29,7 @@ let colorMatrix = [
 let sax = 1;
 let say = 1;
 
-let letters = [];
-const lettersPerRow = 14; 
+
 
 let mls = []
 let mlsx = -1
@@ -61,46 +60,35 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   textFont(myFont);
   textSize(24);
-// 初始化所有字母
-  const chars = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N",
-                 "O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-  for (let i = 0; i < chars.length; i++) {
-    const row = i < lettersPerRow ? 0 : 1; // 第一行或第二行
-    const x = (i % lettersPerRow) * 40 + 20+189;
-    const y = row * 40 + 20+804;
-    letters.push(new Letter(chars[i], x, y));
-  }
 
-  // 默认选中A（根据图片描述）
-  // letters[0].isActive = true;
   sax = width / 1512
   say = height / 892
   // createAdaptiveCanvas(1512, 892);
   // canvas.style('width', '100%');
   // canvas.style('height', (window.innerHeight ) + 'px');
   // canvas.style('object-fit', 'contain');
-  mySlider = new Slider(188, 307, 562, {
+  mySlider = new Slider(188, 327, 562, {
     lineHeight: 1,
     lineThickness: 3,
     knobSize: 18,
     id: 0,
     value: 0.3
   });
-  mySlider1 = new Slider(188, 422, 157, {
+  mySlider1 = new Slider(188, 442, 157, {
     lineHeight: 1,
     lineThickness: 3,
     knobSize: 18,
     id: 1,
     value: 0.1
   });
-  mySlider2 = new Slider(392, 422, 157, {
+  mySlider2 = new Slider(392, 442, 157, {
     lineHeight: 1,
     lineThickness: 3,
     knobSize: 18,
     id: 2,
     value: 0.1
   });
-  mySlider3 = new Slider(596, 422, 157, {
+  mySlider3 = new Slider(596, 442, 157, {
     lineHeight: 1,
     lineThickness: 3,
     knobSize: 18,
@@ -108,21 +96,14 @@ function setup() {
     value: 0.1
   });
 
-  mySlider4 = new Slider(188, 546, 157, {
+  mySlider4 = new Slider(188, 566, 253, {
     lineHeight: 1,
     lineThickness: 3,
     knobSize: 18,
     id: 4,
     value: 0
   });
-  mySlider5 = new Slider(596, 546, 157, {
-    lineHeight: 1,
-    lineThickness: 3,
-    knobSize: 18,
-    id: 5,
-    value: 0
-  });
-  mySlider6 = new Slider(392, 546, 157, {
+  mySlider5 = new Slider(503, 566, 250, {
     lineHeight: 1,
     lineThickness: 3,
     knobSize: 18,
@@ -196,7 +177,7 @@ function setup() {
     for (let col = 0; col < 10; col++) {
       rects.push({
         x: col * (rectWidth + padding) + 190,
-        y: row * (rectHeight + padding) + 645,
+        y: row * (rectHeight + padding) + 665,
         color: colorMatrix[row][col],
         active: activeColors.includes(colorMatrix[row][col])
       });
@@ -216,7 +197,6 @@ function setup() {
   localStorage.setItem("s2", 2)
   localStorage.setItem("s3", 2)
   localStorage.setItem("s4", 30)
-  localStorage.setItem("s6", 31)
   localStorage.setItem("s5", 0)
 
 
@@ -240,7 +220,6 @@ let s2 = 0;
 let s3 = 0;
 let s4 = 30;
 let s5 = 0;
-let s6 = 31;
 function draw() {
   background(255);
 
@@ -250,13 +229,12 @@ function draw() {
   line(123, 0, 123, height)
   line(124, 128, width, 128)
 
-  s0 = parseInt(map(mySlider.options.value, 0, 1, 30,120))
-  s1 = parseInt(map(mySlider1.options.value, 0, 1, 10, 40))
-  s2 = parseInt(map(mySlider2.options.value, 0, 1, 10, 40))
-  s3 = parseInt(map(mySlider3.options.value, 0, 1, 10, 40))
+  s0 = parseInt(map(mySlider.options.value, 0, 1, 1, 60))
+  s1 = parseInt(map(mySlider1.options.value, 0, 1, 0, 20))
+  s2 = parseInt(map(mySlider2.options.value, 0, 1, 0, 20))
+  s3 = parseInt(map(mySlider3.options.value, 0, 1, 0, 20))
   s4 = parseInt(map(mySlider4.options.value, 0, 1, 30, 300))
   s5 = parseInt(map(mySlider5.options.value, 0, 1, 0, 9))
-  s6 = parseInt(map(mySlider6.options.value, 0, 1, 10, 475))
   line(816, 128, 816, height)
 
   push()
@@ -296,16 +274,14 @@ function draw() {
   textAlign(LEFT)
   text("Fill", 189, 190)
 
-  text("Total Number of Shapes", 189, 250)
-  text("Number of Triangle ", 189, 374)
+  text("Total Number of Shapes", 189, 270)
+  text("Number of Triangle ", 189, 394)
 
-  text("Number of Rect ", 392, 374)
-  text("Number of Ellipse ", 596, 374)
-  text("MinSize ", 189, 498)
-  text("MaxSize ", 392, 498)
-  text("Color Palette", 189, 604)
-     if(ffg==1)text("Alphabet", 189, 774)
-  text("Rotation Precision ", 596, 498)
+  text("Number of Rect ", 392, 394)
+  text("Number of Ellipse ", 596, 394)
+  text("Minimum Shape Size ", 189, 518)
+  text("Color Palette", 189, 624)
+  text("Rotation Precision ", 504, 518)
   text("Wireframe", 320, 190)
 
   text("Random", 494, 190)
@@ -322,7 +298,6 @@ function draw() {
   mySlider3.display();
   mySlider4.display();
   mySlider5.display();
-  mySlider6.display();
 
 
   fill(0)
@@ -367,12 +342,6 @@ function draw() {
 
     mlsx = Math.floor(Math.random() * 3)
   }
-
-if(ffg==1){
-   letters.forEach(letter => letter.draw());
-
-}
- 
 }
 
 
@@ -413,153 +382,48 @@ function checkHover(btn) {
 function mousePressed() {
 
 
-  console.log(mouseX,mouseY)
+  console.log(1111)
   // 检查Poster按钮点击
   if (
-    mouseX / sax > 47 &&
-    mouseX / sax  < 88 &&
-    mouseY / say  > 49&&
-    mouseY / say  < 159
+    mouseX / sax / sax > posterBtn.x &&
+    mouseX / sax / sax < posterBtn.x + posterBtn.w &&
+    mouseY / say / say > posterBtn.y &&
+    mouseY / say / say < posterBtn.y + posterBtn.h
   ) {
     console.log("Poster button clicked");
-
-mySwitch.setState(false)
-mySwitch2.setState(false)
- localStorage.setItem("sline", mySwitch.state ? "1" : "0");
-  localStorage.setItem("srandom", mySwitch2.state ? "1" : "0");
-    posterBtn = {
-    x: 0,
-    y: 0,
-    w: 109,
-    h: 40,
-    label: "Poster",
-    bgColor: color(0),
-    textColor: color(255),
-    isHovered: false
-  };
-  ffg=0;
-  // 创建Typography按钮(白色背景，黑色文字，黑色边框)
-  typographyBtn = {
-    x: 0,
-    y: 0,
-    w: 170,
-    h: 40,
-    label: "Typography",
-    bgColor: color(255),
-    textColor: color(0),
-    borderColor: color(0),
-    isHovered: false
-  };
     // 在这里添加Poster按钮的功能
-
-
-     document.getElementById('myIframe').style.display="block";
- document.getElementById('myIframe2').style.display="none";
   }
 
   // 检查Typography按钮点击
   if (
-    mouseX / sax >44 &&
-    mouseX / sax < 91&&
-    mouseY / say > 191 &&
-    mouseY / say < 366
+    mouseX / sax > typographyBtn.x &&
+    mouseX / sax < typographyBtn.x + typographyBtn.w &&
+    mouseY / say > typographyBtn.y &&
+    mouseY / say < typographyBtn.y + typographyBtn.h
   ) {
     console.log("Typography button clicked");
-
-ffg=1
-
-mySwitch.setState(true)
-// mySwitch2.setState(true)
-
-
-
- localStorage.setItem("sline", mySwitch.state ? "1" : "0");
-  localStorage.setItem("srandom", mySwitch2.state ? "1" : "0");
-    posterBtn = {
-    x: 0,
-    y: 0,
-    w: 109,
-    h: 40,
-    label: "Poster",
-    bgColor: color(255),
-    textColor: color(0),
-    borderColor: color(0),
-    isHovered: false
-  };
-
-  // 创建Typography按钮(白色背景，黑色文字，黑色边框)
-  typographyBtn = {
-    x: 0,
-    y: 0,
-    w: 170,
-    h: 40,
-    label: "Typography",
-    bgColor: color(0),
-    textColor: color(255),
-    borderColor: color(0),
-    isHovered: false
-  };
-
- document.getElementById('myIframe').style.display="none";
- document.getElementById('myIframe2').style.display="block";
-  console.log(typographyBtn.bgColor)
     // 在这里添加Typography按钮的功能
   }
 
-  // console.log(checkHover(gbt))
+  console.log(checkHover(gbt))
   if (checkHover(gbt)) {
 
-  if(ffg==1){
 
-
-
-      var iframe2 = document.getElementById('myIframe2');
-
-        
-
-
-    iframe2.contentWindow.createRandomShapes();
-
-
-    if(vvmm!=''){
-iframe2.contentWindow.loadBcsvAutomatically("./"+ vvmm+".csv");
-
-    }
-    
-
-    //         var iframe2 = document.getElementById('myIframe2');
-
-
-    // iframe2.contentWindow.createRandomShapes();
-        }
-
-
-        else{
     var iframe = document.getElementById('myIframe');
 
 
     iframe.contentWindow.createRandomShapes();
 
-        }
+
   }
   if (checkHover(sbt)) {
- if(ffg==1){
 
-
-            var iframe2 = document.getElementById('myIframe2');
-
-
-    iframe2.contentWindow.exportToSVG();
-        }
-
-
-        else{
 
     var iframe = document.getElementById('myIframe');
 
 
     iframe.contentWindow.exportToSVG();
-        }
+
 
   }
 
@@ -577,31 +441,8 @@ iframe2.contentWindow.loadBcsvAutomatically("./"+ vvmm+".csv");
 
       // 更新激活颜色数组
       if (rect.active) {
-
-
-
-        localStorage.setItem("vc",rect.color)
-
-
-        if(ffg==1){
-
-            if (!activeColors.includes(rect.color)) {
-          activeColors.push(rect.color);
-        }
-            var iframe2 = document.getElementById('myIframe2');
-
-
-    iframe2.contentWindow.vvm();
-        }
-
-        else{
-
-
-
         if (!activeColors.includes(rect.color)) {
           activeColors.push(rect.color);
-        }
-
         }
       } else {
         let index = activeColors.indexOf(rect.color);
@@ -622,44 +463,10 @@ iframe2.contentWindow.loadBcsvAutomatically("./"+ vvmm+".csv");
   if (mySlider3.contains(mouseX / sax, mouseY / say)) mySlider3.startDrag();
   if (mySlider4.contains(mouseX / sax, mouseY / say)) mySlider4.startDrag();
   if (mySlider5.contains(mouseX / sax, mouseY / say)) mySlider5.startDrag();
-  if (mySlider6.contains(mouseX / sax, mouseY / say)) mySlider6.startDrag();
 
   // 检查开关点击
-
-
-  console.log(ffg)
-
-  if(ffg!=1){
-
-if (mySwitch.clicked()&&ffg!=1) localStorage.setItem("sline", mySwitch.state ? "1" : "0");
-  }
-  
+  if (mySwitch.clicked()) localStorage.setItem("sline", mySwitch.state ? "1" : "0");
   if (mySwitch2.clicked()) localStorage.setItem("srandom", mySwitch2.state ? "1" : "0");
-
-
-   // 遍历字母，检查点击
-  for (let i = 0; i < letters.length; i++) {
-    if (letters[i].contains(mouseX/sax, mouseY/say)) {
-      // 取消之前选中的字母
-      letters.forEach(letter => letter.isActive = false);
-      // 选中当前字母
-      letters[i].isActive = true;
-
-
-
-
-    vvmm=letters[i].char
-
-           var iframe2 = document.getElementById('myIframe2');
-
-        
-
-
-    iframe2.contentWindow.createRandomShapes();
-    iframe2.contentWindow.loadBcsvAutomatically("./"+ letters[i].char+".csv");
-      break;
-    }
-  }
 }
 
 function mouseDragged() {
@@ -670,7 +477,6 @@ function mouseDragged() {
   if (mySlider3.isDragging) mySlider3.display();
   if (mySlider4.isDragging) mySlider4.display();
   if (mySlider5.isDragging) mySlider5.display();
-  if (mySlider6.isDragging) mySlider6.display();
 }
 
 function mouseReleased() {
@@ -681,7 +487,6 @@ function mouseReleased() {
   mySlider3.stopDrag();
   mySlider4.stopDrag();
   mySlider5.stopDrag();
-  mySlider6.stopDrag();
 
 
   localStorage.setItem("s1", s1)
@@ -689,7 +494,6 @@ function mouseReleased() {
   localStorage.setItem("s3", s3)
   localStorage.setItem("s4", s4)
   localStorage.setItem("s5", s5)
-  localStorage.setItem("s6", s6)
 
 
 
@@ -868,9 +672,9 @@ class Slider {
 
 
         // console.log(s0,'kkkk')
-        mySlider1.options.value = this.options.value * 3 / 3
-        mySlider2.options.value = this.options.value * 3 / 3
-        mySlider3.options.value = this.options.value * 3 / 3
+        mySlider1.options.value = this.options.value * 2.5 / 3
+        mySlider2.options.value = this.options.value * 2.5 / 3
+        mySlider3.options.value = this.options.value * 2.5 / 3
 
 
 
@@ -902,7 +706,7 @@ class Slider {
     this.isDragging = false;
 
 
-    // console.log(this.options.value)
+    console.log(this.options.value)
   }
 
   // 获取当前值(0-1)
@@ -914,56 +718,5 @@ class Slider {
   setValue(val) {
     this.options.value = constrain(val, 0, 1);
     this.knobX = this.x + this.width * this.options.value;
-  }
-}
-
-
-
-
-
-// 字母类：封装单个字母的属性和行为
-class Letter {
-  constructor(char, x, y) {
-    this.char = char;      // 字母字符（A-Z）
-    this.x = x;            // 中心坐标X
-    this.y = y;            // 中心坐标Y
-    this.isActive = false; // 是否被选中
-    this.size = 40;        // 方块大小
-  }
-
-  // 绘制字母方块
-  draw() {
-
-    push()
-    // 绘制方块背景
-    if (this.isActive) {
-      fill(0); // 选中：黑色背景
-    } else {
-      noFill(); // 未选中：透明背景
-    }
-    stroke(200); // 边框灰色
-    rect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
-
-    // 绘制字母
-    if (this.isActive) {
-      fill(255); // 选中：白色字母
-    } else {
-      fill(120); // 未选中：灰色字母
-    }
-    noStroke();
-    textAlign(CENTER, CENTER);
-    text(this.char, this.x, this.y);
-
-    pop()
-  }
-
-  // 检测点击是否在方块内
-  contains(mx, my) {
-    return (
-      mx > this.x - this.size/2 &&
-      mx < this.x + this.size/2 &&
-      my > this.y - this.size/2 &&
-      my < this.y + this.size/2
-    );
   }
 }

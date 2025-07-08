@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Paper.js 多图形交集交互</title>
+  <title>Paper.js 多图形交互</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   <style>
-    canvas { border: 1.5px solid #000; }
+    canvas { border: 1px solid #000; }
     button { margin: 10px 5px 0 0; }
     .controls { margin-bottom: 10px; }
     .control-group { margin-bottom: 5px; }
     label { display: inline-block; width: 120px; }
+    #fileInput { display: none; }
+    #colorPicker { display: none; position: absolute; z-index: 100; }
+    .shape-info { position: absolute; right: 10px; top: 10px; background: white; padding: 5px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
-  <div class="controls" style="display: none;" >
+  <div class="controls" style="display: none;">
     <div class="control-group">
       <label>三角形数量:</label>
       <input type="number" id="triangleCount" min="1" max="10" value="1">
@@ -49,14 +53,253 @@
     </div>
   </div>
   <canvas id="canvas" width="475" height="734"></canvas>
-  <div  >
-    <button id="randomizeBtn" >随机生成</button>
-    <button id="showIntersectBtn"  >显示/隐藏交集</button>
-    <button id="exportSvgBtn" >导出SVG</button>
+  <div class="shape-info" id="shapeInfo"  style="visibility: hidden;"></div>
+  <div  style="display: none;">
+    <button id="randomizeBtn">随机生成</button>
+    <button id="exportSvgBtn">导出SVG</button>
+    <button id="loadCsvBtn">加载CSV连线</button>
+    <input type="file" id="fileInput" accept=".csv">
+    <input type="color" id="colorPicker">
   </div>
   <script>
-    // 从localStorage中读取参数
-    function getLocalParam(key, defaultValue) {
+    // 初始化Paper.js
+    paper.setup('canvas');
+    const canvasWidth = 475;
+    const canvasHeight = 734;
+    const padding = 0;
+    let shapes = [];
+    let allRegions = []; // 存储所有最小封闭区域
+    let selectedRegion = null; // 当前选中的区域
+    let csvPath = null;
+    const colorPicker = document.getElementById('colorPicker');
+    const shapeInfo = document.getElementById('shapeInfo');
+
+    // 生成随机数
+    function getRandom(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    // 计算图形旋转后的实际边界尺寸
+    function getRotatedSize(width, height, angle) {
+      const rad = angle * Math.PI / 180;
+      const sin = Math.abs(Math.sin(rad));
+      const cos = Math.abs(Math.cos(rad));
+      return {
+        width: width * cos + height * sin,
+        height: width * sin + height * cos
+      };
+    }
+
+    // 确保图形不超出画布
+    function ensureWithinBounds(item, isCentered) {
+      let rotatedSize;
+      if (item instanceof paper.Path.Circle) {
+        rotatedSize = { width: item.bounds.width, height: item.bounds.height };
+      } else {
+        rotatedSize = getRotatedSize(
+          item.bounds.width, 
+          item.bounds.height, 
+          item.rotation
+        );
+      }
+
+      const maxWidth = canvasWidth - 2 * padding;
+      const maxHeight = canvasHeight - 2 * padding;
+
+      if (rotatedSize.width > maxWidth || rotatedSize.height > maxHeight) {
+        const scale = Math.min(
+          maxWidth / rotatedSize.width,
+          maxHeight / rotatedSize.height
+        );
+        item.scale(scale);
+        if (!(item instanceof paper.Path.Circle)) {
+          rotatedSize = getRotatedSize(
+            item.bounds.width, 
+            item.bounds.height, 
+            item.rotation
+          );
+        } else {
+          rotatedSize = { width: item.bounds.width, height: item.bounds.height };
+        }
+      }
+
+      const shouldStickToEdge = Math.random() < 0.7 && !isCentered;
+      
+      let x, y;
+      
+      if (isCentered) {
+        x = canvasWidth / 2;
+        y = getRandom(
+          padding + rotatedSize.height / 2,
+          canvasHeight - padding - rotatedSize.height / 2
+        );
+      } else if (shouldStickToEdge) {
+        const edge = Math.floor(Math.random() * 4);
+        
+        if (item instanceof paper.Path.Circle) {
+          switch(edge) {
+            case 0:
+              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
+              y = rotatedSize.height/2;
+              break;
+            case 1:
+              x = canvasWidth - rotatedSize.width/2;
+              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
+              break;
+            case 2:
+              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
+              y = canvasHeight - rotatedSize.height/2;
+              break;
+            case 3:
+              x = rotatedSize.width/2;
+              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
+              break;
+          }
+        } else {
+          switch(edge) {
+            case 0:
+              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
+              y = rotatedSize.height/2;
+              break;
+            case 1:
+              x = canvasWidth - rotatedSize.width/2;
+              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
+              break;
+            case 2:
+              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
+              y = canvasHeight - rotatedSize.height/2;
+              break;
+            case 3:
+              x = rotatedSize.width/2;
+              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
+              break;
+          }
+        }
+      } else {
+        x = getRandom(
+          padding + rotatedSize.width / 2,
+          canvasWidth - padding - rotatedSize.width / 2
+        );
+        y = getRandom(
+          padding + rotatedSize.height / 2,
+          canvasHeight - padding - rotatedSize.height / 2
+        );
+      }
+      
+      item.position = new paper.Point(x, y);
+    }
+   function getRandomColor() {
+      const colors = getLocalParam('sc', ['#cfe5e9', '#a2d2e2', '#5f9ea0', '#4682b4', '#4169e1']).slice(1);
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+    // 计算所有最小封闭区域
+    function calculateAllRegions() {
+      allRegions = [];
+      
+      if (shapes.length === 0) return;
+      
+      // 1. 收集所有图形的交点
+      let intersections = [];
+      for (let i = 0; i < shapes.length; i++) {
+        for (let j = i + 1; j < shapes.length; j++) {
+          const intersect = shapes[i].intersect(shapes[j]);
+          if (!intersect.isEmpty()) {
+            intersections.push(intersect);
+          }
+        }
+      }
+      
+      // 2. 计算所有可能的区域
+      let regions = [];
+      
+      // 首先添加原始图形
+      shapes.forEach(shape => {
+        regions.push({
+          path: shape.clone(),
+          type: 'original',
+          source: shape
+        });
+      });
+      
+      // 然后添加交集区域
+      intersections.forEach(intersect => {
+        regions.push({
+          path: intersect,
+          type: 'intersection',
+          sources: [intersect._source1, intersect._source2]
+        });
+      });
+      
+      // 3. 计算差异区域（原始图形减去与其他图形的交集）
+      shapes.forEach(shape => {
+        let difference = shape.clone();
+        
+        shapes.forEach(otherShape => {
+          if (otherShape !== shape) {
+            const intersect = shape.intersect(otherShape);
+            if (!intersect.isEmpty()) {
+              difference = difference.subtract(intersect);
+            }
+          }
+        });
+        
+        if (!difference.isEmpty()) {
+          regions.push({
+            path: difference,
+            type: 'difference',
+            source: shape
+          });
+        }
+      });
+      
+      // 4. 过滤掉空区域并设置样式
+      allRegions = regions.filter(region => !region.path.isEmpty());
+      
+      // 为每个区域设置初始样式
+      allRegions.forEach(region => {
+        region.path.fillColor = "white";
+        region.path.strokeColor = 'black';
+        region.path.strokeWidth = 1;
+        region.path.opacity =1;
+        
+        // 添加点击事件
+        region.path.onClick = function(event) {
+          if (selectedRegion) {
+            selectedRegion.path.strokeWidth = 1;
+            selectedRegion.path.strokeColor = 'black';
+          }
+          
+          this.strokeWidth = 1;
+          this.strokeColor = 'black';
+          selectedRegion = region;
+          
+          // 显示颜色选择器
+          colorPicker.style.display = 'block';
+          colorPicker.style.left = (event.point.x + 10) + 'px';
+          colorPicker.style.top = (event.point.y + 10) + 'px';
+          colorPicker.value = this.fillColor.toCSS(true);
+          
+          // 显示区域信息
+          updateShapeInfo(region);
+        };
+        
+        paper.project.activeLayer.addChild(region.path);
+      });
+    }
+
+    // 更新形状信息显示
+    function updateShapeInfo(region) {
+      let info = '';
+      if (region.type === 'original') {
+        info = `原始图形: ${region.source.name}`;
+      } else if (region.type === 'intersection') {
+        info = `交集区域: ${region.sources[0].name} 和 ${region.sources[1].name}`;
+      } else if (region.type === 'difference') {
+        info = `差异区域: ${region.source.name}`;
+      }
+      shapeInfo.textContent = info;
+    }
+ function getLocalParam(key, defaultValue) {
       try {
         const value = localStorage.getItem(key);
         if (value === null) return defaultValue;
@@ -72,194 +315,10 @@
         return defaultValue;
       }
     }
-    
-    // 设置输入框的值
-    function setInputValues() {
-      document.getElementById('triangleCount').value = getLocalParam('s1', 1);
-      document.getElementById('squareCount').value = getLocalParam('s2', 1);
-      document.getElementById('circleCount').value = getLocalParam('s3', 1);
-      document.getElementById('maxSize').value = getLocalParam('s4', 200);
-      document.getElementById('maxRotation').value = getLocalParam('s5', 360);
-      document.getElementById('fillMode').value = getLocalParam('sline', 0);
-      document.getElementById('layoutMode').value = getLocalParam('srandom', 0);
-    }
-    
-    // 从颜色数组中随机获取颜色
-    function getRandomColor() {
-      const colors = getLocalParam('sc', ['#cfe5e9', '#a2d2e2', '#5f9ea0', '#4682b4', '#4169e1']);
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
-
-    // 初始化时设置输入框值
-    setInputValues();
-
-    paper.setup('canvas');
-    const canvasWidth = 475;
-    const canvasHeight = 734;
-    const padding = 0; // 边界内边距
-    let shapes = [];
-    let intersection = null;
-    let isIntersectionVisible = false;
-
-    // 生成随机数
-    function getRandom(min, max) {
 
 
-     
-      return Math.random() * (max - min) + min
-    }
 
-    // 计算图形旋转后的实际边界尺寸
-    function getRotatedSize(width, height, angle) {
-      const rad = angle * Math.PI / 180;
-      const sin = Math.abs(Math.sin(rad));
-      const cos = Math.abs(Math.cos(rad));
-      return {
-        width: width * cos + height * sin,
-        height: width * sin + height * cos
-      };
-    }
-
-    // 确保图形不超出画布（修改版，支持水平居中模式和紧贴边界）
-    function ensureWithinBounds(item, isCentered) {
-      // 先获取旋转后的实际尺寸
-      let rotatedSize;
-      if (item instanceof paper.Path.Circle) {
-        // 圆形不受旋转影响
-        rotatedSize = { width: item.bounds.width, height: item.bounds.height };
-      } else {
-        rotatedSize = getRotatedSize(
-          item.bounds.width, 
-          item.bounds.height, 
-          item.rotation
-        );
-      }
-
-      // 计算最大允许尺寸（考虑内边距）
-      const maxWidth = canvasWidth - 2 * padding;
-      const maxHeight = canvasHeight - 2 * padding;
-
-      // 如果图形太大，先缩放它
-      if (rotatedSize.width > maxWidth || rotatedSize.height > maxHeight) {
-        const scale = Math.min(
-          maxWidth / rotatedSize.width,
-          maxHeight / rotatedSize.height
-        );
-        item.scale(scale);
-        // 缩放后重新计算旋转尺寸
-        if (!(item instanceof paper.Path.Circle)) {
-          rotatedSize = getRotatedSize(
-            item.bounds.width, 
-            item.bounds.height, 
-            item.rotation
-          );
-        } else {
-          rotatedSize = { width: item.bounds.width, height: item.bounds.height };
-        }
-      }
-
-      // 50%概率让图形紧贴边界
-      const shouldStickToEdge = Math.random() < 0.7 && !isCentered;
-      
-      let x, y;
-      
-      if (isCentered) {
-        // 水平居中模式
-        x = canvasWidth / 2;
-        y = getRandom(
-          padding + rotatedSize.height / 2,
-          canvasHeight - padding - rotatedSize.height / 2
-        );
-      } else if (shouldStickToEdge) {
-        // 随机位置模式且需要紧贴边界
-        const edge = Math.floor(Math.random() * 4); // 0=上, 1=右, 2=下, 3=左
-        
-        if (item instanceof paper.Path.Circle) {
-          // 圆形紧贴边界
-          switch(edge) {
-            case 0: // 上边界
-              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
-              y = rotatedSize.height/2;
-              break;
-            case 1: // 右边界
-              x = canvasWidth - rotatedSize.width/2;
-              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
-              break;
-            case 2: // 下边界
-              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
-              y = canvasHeight - rotatedSize.height/2;
-              break;
-            case 3: // 左边界
-              x = rotatedSize.width/2;
-              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
-              break;
-          }
-        } else {
-          // 其他图形紧贴边界
-          switch(edge) {
-            case 0: // 上边界
-              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
-              y = rotatedSize.height/2;
-              break;
-            case 1: // 右边界
-              x = canvasWidth - rotatedSize.width/2;
-              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
-              break;
-            case 2: // 下边界
-              x = getRandom(rotatedSize.width/2, canvasWidth - rotatedSize.width/2);
-              y = canvasHeight - rotatedSize.height/2;
-              break;
-            case 3: // 左边界
-              x = rotatedSize.width/2;
-              y = getRandom(rotatedSize.height/2, canvasHeight - rotatedSize.height/2);
-              break;
-          }
-        }
-      } else {
-        // 随机位置模式不紧贴边界
-        x = getRandom(
-          padding + rotatedSize.width / 2,
-          canvasWidth - padding - rotatedSize.width / 2
-        );
-        y = getRandom(
-          padding + rotatedSize.height / 2,
-          canvasHeight - padding - rotatedSize.height / 2
-        );
-      }
-      
-      item.position = new paper.Point(x, y);
-    }
-
-    // 计算多个图形的交集
-    function calculateIntersection() {
-      if (shapes.length < 2) return null;
-
-      let intersections = [];
-      for (let i = 0; i < shapes.length; i++) {
-        for (let j = i + 1; j < shapes.length; j++) {
-          const intersect = shapes[i].intersect(shapes[j]);
-          if (!intersect.isEmpty()) {
-            // 获取最上层图形的样式
-            const topShape = shapes[j];
-            
-            // 应用最上层图形的颜色
-            intersect.fillColor = topShape.fillColor;
-            intersect.strokeColor = topShape.strokeColor;
-            intersections.push(intersect);
-          }
-        }
-      }
-
-      if (intersections.length === 0) return null;
-
-      let finalIntersect = intersections[0].clone();
-      for (let i = 1; i < intersections.length; i++) {
-        finalIntersect = finalIntersect.unite(intersections[i]);
-      }
-
-      return finalIntersect.isEmpty() ? null : finalIntersect;
-    }
-function getRandomAngle(z) {
+    function getRandomAngle(z) {
   // 确保 z 是 0-9 的整数
   z = Math.max(0, Math.min(9, Math.floor(z)));
   
@@ -275,24 +334,12 @@ function getRandomAngle(z) {
   // 返回结果
   return randomMultiple * step;
 }
-   // 创建随机图形（修改版，按大小降序排列创建）
-function createRandomShapes() {
+ function createRandomShapes() {
   // 从localStorage中读取参数
-  let  triangleCount = getLocalParam('s1', 1);
-  let  squareCount = getLocalParam('s2', 1);
-  let  circleCount = getLocalParam('s3', 1);
-
-
-  if(triangleCount==10&&squareCount==10&&circleCount==10){
-
-triangleCount=1;
-squareCount=0
-circleCount=0
-
-
-  }
+  const triangleCount = getLocalParam('s1', 1);
+  const squareCount = getLocalParam('s2', 1);
+  const circleCount = getLocalParam('s3', 1);
   const maxSize = getLocalParam('s4', 200);
-  const minSize = getLocalParam('s6', 200);
   const maxRotation = getLocalParam('s5', 360);
   const fillMode = getLocalParam('sline', 0);
   const layoutMode = getLocalParam('srandom', 0); // 0=随机位置, 1=水平居中
@@ -315,7 +362,7 @@ circleCount=0
   
   // 添加三角形数据
   for (let i = 0; i < triangleCount; i++) {
-    const triangleSize = Math.min(getRandom(maxSize<minSize?maxSize:minSize, minSize), canvasWidth - 2 * padding, canvasHeight - 2 * padding);
+    const triangleSize = Math.min(getRandom(maxSize, 475), canvasWidth - 2 * padding, canvasHeight - 2 * padding);
     shapeData.push({
       size: triangleSize,
       create: () => {
@@ -347,7 +394,7 @@ circleCount=0
   
   // 添加正方形数据
   for (let i = 0; i < squareCount; i++) {
-    const squareSize = Math.min(getRandom(maxSize<minSize?maxSize:minSize, minSize), canvasWidth - 2 * padding, canvasHeight - 2 * padding);
+    const squareSize = Math.min(getRandom(maxSize, 475), canvasWidth - 2 * padding, canvasHeight - 2 * padding);
     shapeData.push({
       size: squareSize,
       create: () => {
@@ -374,7 +421,7 @@ circleCount=0
   
   // 添加圆形数据
   for (let i = 0; i < circleCount; i++) {
-    const circleRadius = Math.min(getRandom(maxSize<minSize?maxSize:minSize, minSize), (canvasWidth - 2 * padding)/2, (canvasHeight - 2 * padding)/2);
+    const circleRadius = Math.min(getRandom(maxSize, 475), (canvasWidth - 2 * padding)/2, (canvasHeight - 2 * padding)/2);
     shapeData.push({
       size: circleRadius * 2, // 转换为直径以便比较
       create: () => {
@@ -417,56 +464,51 @@ circleCount=0
   //     this.fillColor = 'yellow';
   //   };
   // }
-}
+// }
+      // 计算所有最小封闭区域
+      calculateAllRegions();
+      
+      // 如果之前有CSV路径，重新添加
+      // if (csvPath) {
+      //   paper.project.activeLayer.addChild(csvPath);
+      // }
+    }
 
     // 导出为SVG
-   function exportToSVG() {
+// 导出为SVG
+function exportToSVG() {
   const serializer = new XMLSerializer();
   const svgNamespace = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNamespace, "svg");
-  
-  // 获取当前画布背景色
-  const bgColor = document.getElementById('canvas').style.backgroundColor || 'white';
   
   svg.setAttribute("width", canvasWidth);
   svg.setAttribute("height", canvasHeight);
   svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`);
   
-  // 添加背景矩形
-  const bgRect = document.createElementNS(svgNamespace, "rect");
-  bgRect.setAttribute("x", "0");
-  bgRect.setAttribute("y", "0");
-  bgRect.setAttribute("width", canvasWidth);
-  bgRect.setAttribute("height", canvasHeight);
-  bgRect.setAttribute("fill", bgColor);
-  svg.appendChild(bgRect);
-  
-  paper.project.activeLayer.children.forEach(child => {
-    if (child.name === 'intersection' && !isIntersectionVisible) {
-      return;
-    }
+  allRegions.forEach(region => {
+    // 检查填充颜色是否为白色或透明
+    const fillColor = region.path.fillColor;
+    const isWhite = fillColor && 
+                   (fillColor.toCSS(true) === 'rgb(255,255,255)' || 
+                    fillColor.toCSS(true) === 'rgba(255,255,255,1)' ||
+                    fillColor.toCSS(true) === 'rgba(0,0,0,0)' ||
+                    fillColor.toCSS(true) === 'transparent' ||
+                    fillColor.toCSS(true) === '#ffffff' ||
+                    fillColor.toCSS(true) === '#fff');
     
-    const childSvg = child.exportSVG({ asString: false });
-    
-    if (childSvg) {
-      if (child.fillColor) {
-        childSvg.setAttribute("fill", child.fillColor.toCSS(true));
-      } else {
-        childSvg.setAttribute("fill", "none");
-      }
+    // 只导出非白色和非透明的区域
+    if (!isWhite) {
+      const childSvg = region.path.exportSVG({ asString: false });
       
-      if (child.strokeColor) {
-        childSvg.setAttribute("stroke", child.strokeColor.toCSS(true));
-        childSvg.setAttribute("stroke-width", child.strokeWidth || 1);
-      } else {
+      if (childSvg) {
+        childSvg.setAttribute("fill", region.path.fillColor.toCSS(true));
+        // 去除边框：将stroke设置为none
         childSvg.setAttribute("stroke", "none");
+        childSvg.setAttribute("stroke-width", "0");
+        childSvg.setAttribute("opacity", region.path.opacity || 1);
+        
+        svg.appendChild(childSvg);
       }
-      
-      if (child.opacity !== undefined && child.opacity !== 1) {
-        childSvg.setAttribute("opacity", child.opacity);
-      }
-      
-      svg.appendChild(childSvg);
     }
   });
   
@@ -481,7 +523,7 @@ circleCount=0
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'shapes-intersection.svg';
+  a.download = 'shapes-regions.svg';
   document.body.appendChild(a);
   a.click();
   
@@ -490,23 +532,142 @@ circleCount=0
     URL.revokeObjectURL(url);
   }, 100);
 }
-    // 鼠标点击事件
+
+ // 从CSV文件创建路径
+function createPathFromCSV(file) {
+  Papa.parse(file, {
+    header: false,
+    complete: function(results) {
+      if (csvPath) {
+        csvPath.remove();
+      }
+      
+      const points = [];
+      
+      results.data.forEach(row => {
+        if (row.length >= 2 && !isNaN(row[0]) && !isNaN(row[1])) {
+          const x = parseFloat(row[0]);
+          const y = parseFloat(row[1]);
+          
+          const adjustedX = Math.max(0, Math.min(canvasWidth, x));
+          const adjustedY = Math.max(0, Math.min(canvasHeight, y));
+          
+          points.push(new paper.Point(adjustedX, adjustedY));
+        }
+      });
+      
+      if (points.length > 1) {
+
+
+      
+        
+        // 检查路径上的点是否在某个封闭区域内
+        const coloredRegions = new Set(); // 避免重复着色
+        
+        // 检查路径上的每个点
+        points.forEach(point => {
+
+
+               const dot = new paper.Path.Circle({
+            center: point,
+            radius: 3, // 点的大小（可调整）
+            fillColor: 'red',
+            name: 'csvDot'
+          });
+
+          paper.project.activeLayer.addChild(dot);
+          allRegions.forEach(region => {
+            // 检查点是否在该区域内
+            if (region.path.contains(point) && !coloredRegions.has(region)) {
+        
+              
+              // 填充颜色
+              region.path.fillColor = getRandomColor();
+              coloredRegions.add(region);
+            }
+          });
+        });
+        
+        paper.view.update();
+      } else {
+        alert('CSV文件中没有足够的数据点或格式不正确');
+      }
+    },
+    error: function(error) {
+      console.error('CSV解析错误:', error);
+      alert('CSV文件解析错误: ' + error.message);
+    }
+  });
+}
+
+   function loadBcsvAutomatically(z) {
+  // 这里假设b.csv与HTML文件在同一目录下
+  fetch(z)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.text();
+    })
+    .then(csvContent => {
+      createPathFromCSV(csvContent);
+    })
+    .catch(error => {
+      console.error('Error loading b.csv:', error);
+    });
+}
+
+    function   vvm(){
+
+     if (selectedRegion) {
+        selectedRegion.path.fillColor =localStorage.getItem("vc");
+        paper.view.update();
+      }
+
+    }
+
+    // 颜色选择器变化事件
+    colorPicker.addEventListener('change', function() {
+      if (selectedRegion) {
+        selectedRegion.path.fillColor = this.value;
+        paper.view.update();
+      }
+    });
+
+    // 点击画布其他位置隐藏颜色选择器
     paper.view.onMouseDown = function(event) {
       const hitResult = paper.project.hitTest(event.point);
-      if (hitResult && hitResult.item === intersection) {
-        hitResult.item.fillColor = 'yellow';
+      if (!hitResult || hitResult.item !== selectedRegion?.path) {
+        colorPicker.style.display = 'none';
+        if (selectedRegion) {
+          selectedRegion.path.strokeWidth = 1;
+          selectedRegion.path.strokeColor = 'black';
+          selectedRegion = null;
+          shapeInfo.textContent = '';
+        }
       }
     };
 
     document.getElementById('randomizeBtn').addEventListener('click', createRandomShapes);
-    document.getElementById('showIntersectBtn').addEventListener('click', function() {
-      isIntersectionVisible = !isIntersectionVisible;
-      if (intersection) intersection.visible = isIntersectionVisible;
-    });
     document.getElementById('exportSvgBtn').addEventListener('click', exportToSVG);
+    
+    document.getElementById('loadCsvBtn').addEventListener('click', function() {
+      document.getElementById('fileInput').click();
+    });
+    
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        createPathFromCSV(file);
+      }
+    });
 
     // 页面加载时创建图形
     createRandomShapes();
+
+   
+
+    // loadBcsvAutomatically("./b.csv");
   </script>
 </body>
 </html>
