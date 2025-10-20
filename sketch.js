@@ -251,9 +251,9 @@ function draw() {
   line(124, 128, width, 128)
 
   s0 = parseInt(map(mySlider.options.value, 0, 1, 30,120))
-  s1 = parseInt(map(mySlider1.options.value, 0, 1, 10, 40))
-  s2 = parseInt(map(mySlider2.options.value, 0, 1, 10, 40))
-  s3 = parseInt(map(mySlider3.options.value, 0, 1, 10, 40))
+  s1 = parseInt(map(mySlider1.options.value, 0, 1, 0, 40))
+  s2 = parseInt(map(mySlider2.options.value, 0, 1, 0, 40))
+  s3 = parseInt(map(mySlider3.options.value, 0, 1, 0, 40))
   s4 = parseInt(map(mySlider4.options.value, 0, 1, 30, 300))
   s5 = parseInt(map(mySlider5.options.value, 0, 1, 0, 9))
   s6 = parseInt(map(mySlider6.options.value, 0, 1, 10, 475))
